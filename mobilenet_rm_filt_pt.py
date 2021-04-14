@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-import copy,time
+import copy, time
 
 class Block(nn.Module):
     '''Depthwise conv + Pointwise conv'''
