@@ -1,12 +1,26 @@
 import torch
-from torchsummary import summary
+from torchinfo import summary
 from mobilenet_rm_filt_pt import MobileNetv1, remove_channel
 import torch.nn.utils.prune as prune
 
 
 def channel_fraction_pruning(model, fraction):
     #print(list(model.named_parameters()))
-    prune.ln_structured(model.conv1, name="out_channels", amount=fraction, n=1, dim=-1)
+    # you have to iterate over all the blocks and basically do if isinstance of xyz, do this, elif isinstance dwconv, continue...
+    weights = model.state_dict()
+    layers = list(model.state_dict())
+    # print(layers)
+    for l in layers[:-1]:
+        if 'layers' in l:
+            continue
+        if 'weight' in l:
+            print(l)
+            if 'conv' in l:
+                model.conv1 = prune.ln_structured(model.conv1, name="weight", amount=fraction, n=1, dim=-1)
+            # elif 'bn' in l:
+            #     prune.ln_structured(model.bn1, name="weight", amount=fraction, n=1, dim=-1)
+            elif 'linear' in l:
+                model.linear = prune.ln_structured(model.linear, name="weight", amount=fraction, n=1, dim=-1)
     return model
 
 
@@ -23,16 +37,17 @@ if __name__ == '__main__':
     model.to(device)
 
     print("Model Beginning Summary")
-    print(summary(model, (3, 32, 32)))
+    batch_size = 1
+    summary(model, input_size=(batch_size,3, 32, 32))
 
     print("--------------")
-    # print(model)
     ########## Prune Model ##########
-    pruned_model = channel_fraction_pruning(model, 0.05)
-    print(summary(pruned_model, (3, 32, 32)))
+    pruned_model = channel_fraction_pruning(model, 0.5)
+    summary(pruned_model,input_size=(batch_size, 3, 32, 32))
+    # print(list(pruned_model.named_parameters()))
 
     cleaned_model = remove_channel(pruned_model)
-    print(summary(cleaned_model, (3, 32, 32)))
+    summary(cleaned_model, input_size=(batch_size,3, 32, 32))
 
 
     ########## Finetune Model ##########
