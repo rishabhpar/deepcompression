@@ -52,6 +52,10 @@ class MobileNetv1(nn.Module):
         out = self.linear(out)
         return out
 
+def deep_copy_model(model, constructor=MobileNetv1):
+    new_model = constructor()
+    new_model.load_state_dict(model.state_dict())
+    return new_model
 
 def remove_channel(input_model):
     '''
@@ -62,6 +66,9 @@ def remove_channel(input_model):
     '''
     
     new_model = copy.deepcopy(input_model)
+
+    #new_model = deep_copy_model(input_model)
+
     score_list = torch.sum(torch.abs(new_model.conv1.weight.data), dim=(1,2,3))
     next_layer_score_list = torch.sum(torch.abs(new_model.layers[0].conv1.weight.data), dim=(1,2,3))
     score_list = score_list * next_layer_score_list
