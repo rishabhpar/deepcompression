@@ -77,6 +77,8 @@ class Logger:
             prev_start_time = cur_start_time
             time.sleep(max(0, DELAY - elapsed))
 
+        out_file.close()
+
     def getBoardPower(self, prev):
         # use telnet to read power usage
         tel_dat = str(self.SP2_tel.read_very_eager())

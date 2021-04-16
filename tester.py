@@ -8,6 +8,7 @@ import argparse
 from pathlib import Path
 import sys
 import glob
+from logger import Logger
 
 
 if __name__ == '__main__':
@@ -17,14 +18,12 @@ if __name__ == '__main__':
     Path(LOG_DIR).mkdir(exist_ok=True, parents=True)
     assert(Path(ONNX_MODEL_DIR).exists())
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--fraction", help="[0.05, 0.25, 0.5, 0.75, 0.9]", type=float)
-    # parser.add_argument("--epoch", help="[0, 3, 5]", type=int)
-    # args = parser.parse_args()
+    supl_logger = Logger(LOG_DIR=LOG_DIR)
+    supl_logger.wait_for_startup()  # Make sure logger is ready before proceeding
 
-    for onnx_model_name in glob.glob(f"{ONNX_MODEL_DIR}/*.onnx"):
+    for onnx_model_name in glob.glob(f"{ONNX_MODEL_DIR}/*.onnx"): # Iterate over all .onnx files
 
-        #onnx_model_name = f'{ONNX_MODEL_DIR}/model_epoch_{args.epoch}_frac_{args.fraction}.onnx'
+        log_name = onnx_model_name.replace('.onnx', '')
 
         # Create Inference session using ONNX runtime
         sess = onnxruntime.InferenceSession(onnx_model_name)
@@ -48,6 +47,9 @@ if __name__ == '__main__':
         runtime = 0
 
         print(f'-----------RUNNING {onnx_model_name}-----------')
+
+        # Start logger for this run
+        supl_logger.start_logger_thread(run_name=log_name)
 
         # The test_deployment folder contains all 10.000 images from the testing dataset of CIFAR10 in .png format
         for filename in tqdm(os.listdir("test_deployment")):
@@ -76,11 +78,12 @@ if __name__ == '__main__':
                 if pred_class in filename:
                     num_correct += 1
 
+        supl_logger.stop_logger_thread()  # Shutdown logger thread
+
         len_ds = len(tqdm(os.listdir("test_deployment")))
         test_acc = num_correct / len_ds
         print(f"Test Accuracy: {test_acc}, Runtime: {runtime}")
 
-        log_name = onnx_model_name.replace('.onnx', '')
 
         with open(f'{LOG_DIR}/{log_name}_inf_log.csv', 'a') as f:
             f.write("model_name,test_acc,runtime,avg_latency,num_images\n")
