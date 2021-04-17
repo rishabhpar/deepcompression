@@ -140,8 +140,9 @@ if __name__ == '__main__':
     Path(PT_SAVE_DIR).mkdir(exist_ok=True, parents=True)
 
     # ########## Load Trained Model ##########
-    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #device = torch.device("cpu")
+    print(f"Using device: {device}")
     batch_size = 1
 
     fractions_to_prune = [0.05, 0.25, 0.5, 0.75, 0.9]
@@ -154,7 +155,8 @@ if __name__ == '__main__':
             print(f"Epoch: {epochs}")
 
             model = MobileNetv1().to(device)
-            state_dict = torch.load('mbnv1_pt.pt', map_location=torch.device('cpu'))
+            #state_dict = torch.load('mbnv1_pt.pt', map_location=torch.device('cpu'))
+            state_dict = torch.load('mbnv1_pt.pt', map_location=device)
             model.load_state_dict(state_dict)
             model.to(device)
 
@@ -164,8 +166,9 @@ if __name__ == '__main__':
 
             # Retrain for epochs epochs
             if epochs > 0:
-                model.to(device)
+                cleaned_model.to(device)
                 train_info = train(model=cleaned_model, num_epochs=epochs, device=device, batch_size=128, random_seed=1, compute_test_acc=False)
+                print(f"M1: Training Info: {train_info}")
 
             # Export to ONNX
             torch.save(cleaned_model, f'{PT_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.pt')
