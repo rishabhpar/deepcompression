@@ -141,21 +141,24 @@ if __name__ == '__main__':
 
     # ########## Load Trained Model ##########
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #device = torch.device("cpu")
     print(f"Using device: {device}")
     batch_size = 1
 
     fractions_to_prune = [0.05, 0.25, 0.5, 0.75, 0.9]
     epochs_to_train = [0, 3, 5]
 
+    RECREATE_ALL = False
+
     for frac in fractions_to_prune:
         print(f"Creating model with Pruning Fraction: {frac}")
         for epochs in epochs_to_train:
-
             print(f"Epoch: {epochs}")
 
+            if Path(f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx').exists() and not RECREATE_ALL:
+                print(f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx => Already Exists, skipping...')
+                continue
+
             model = MobileNetv1().to(device)
-            #state_dict = torch.load('mbnv1_pt.pt', map_location=torch.device('cpu'))
             state_dict = torch.load('mbnv1_pt.pt', map_location=device)
             model.load_state_dict(state_dict)
             model.to(device)

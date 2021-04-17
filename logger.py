@@ -23,7 +23,7 @@ class Logger:
 
 
     def wait_for_startup(self):
-        SP2_tel = tel.Telnet("192.168.4.1")
+        self.SP2_tel = tel.Telnet("192.168.4.1")
 
     def start_logger_thread(self, run_name):
         print(f"LOGGER: Starting logger thread for {run_name}")
@@ -39,7 +39,7 @@ class Logger:
 
     def _log_run(self, run_name):
         out_fname = f'{run_name}_info_supl_log.txt'
-        header = "time W energy_usage max_mem"
+        header = "run_name time W energy_usage max_mem"
         header = ",".join(header.split(' '))
         out_file = open(out_fname, 'a')
         out_file.write(header)
@@ -68,7 +68,7 @@ class Logger:
             time_stamp = cur_start_time
 
             fmt_str = "{}," * 5
-            out_ln = fmt_str.format(time_stamp - run_start_time, total_power, cum_energy, max_mem)
+            out_ln = fmt_str.format(run_name, time_stamp - run_start_time, total_power, cum_energy, max_mem)
 
             out_file.write(out_ln)
             out_file.write("\n")
