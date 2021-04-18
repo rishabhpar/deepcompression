@@ -1,0 +1,10 @@
+matplotlib
+numpy==1.19.5
+thop
+torch==1.7.1
+torchinfo
+torchsummary
+torchvision==0.8.2
+virtualenv==20.2.2
+joblib
+pathlib
