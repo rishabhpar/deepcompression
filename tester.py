@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     for onnx_model_name in glob.glob(f"{ONNX_MODEL_DIR}/*.onnx"): # Iterate over all .onnx files
 
-        log_name = onnx_model_name.replace('.onnx', '')
+        log_name = onnx_model_name.replace('.onnx', '').replace(f"{ONNX_MODEL_DIR}/", '')
 
         # Create Inference session using ONNX runtime
         sess = onnxruntime.InferenceSession(onnx_model_name)
@@ -88,3 +88,6 @@ if __name__ == '__main__':
         with open(f'{LOG_DIR}/{log_name}_inf_log.csv', 'a') as f:
             f.write("model_name,test_acc,runtime,avg_latency,num_images\n")
             f.write(f"{onnx_model_name},{test_acc},{runtime},{runtime/len_ds},{len_ds}\n")
+
+        print("Sleeping for 120 seconds...")
+        time.sleep(120)

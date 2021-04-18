@@ -38,7 +38,7 @@ class Logger:
         print("LOGGER: Logger thread stopped")
 
     def _log_run(self, run_name):
-        out_fname = f'{run_name}_info_supl_log.txt'
+        out_fname = f'{self.LOG_DIR}/{run_name}_info_supl_log.txt'
         header = "run_name time W energy_usage max_mem"
         header = ",".join(header.split(' '))
         out_file = open(out_fname, 'a')
