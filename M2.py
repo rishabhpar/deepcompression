@@ -8,6 +8,8 @@ import torchvision.transforms as transforms
 import os
 from pathlib import Path
 import time
+from onnxruntime.quantization import quantize_dynamic, QuantType
+import glob
 
 
 def channel_fraction_pruning(model, fraction):
@@ -135,7 +137,7 @@ def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test
 if __name__ == '__main__':
 
     ONNX_SAVE_DIR = "onnx_models"
-    PT_SAVE_DIR = "pt_models"
+    PT_SAVE_DIR = "pt_models_m1"
     Path(ONNX_SAVE_DIR).mkdir(exist_ok=True, parents=True)
     Path(PT_SAVE_DIR).mkdir(exist_ok=True, parents=True)
 
@@ -146,86 +148,64 @@ if __name__ == '__main__':
     print(f"Using device: {device}")
     batch_size = 1
 
+
+    ############ Quantize model, no prune ####################
+    # model = MobileNetv1().to(device)
+    # state_dict = torch.load('mbnv1_pt.pt', map_location=device)
+    # model.load_state_dict(state_dict)
+    # model.to(device)
+
+    # summary(model, input_size=(batch_size, 3, 32, 32), verbose=0)
+
+    # model.cpu() # Send cleaned model to CPU for ONNX export
+    # torch.onnx.export(model, torch.randn(1, 3, 32, 32), f'base_model.onnx', export_params=True, opset_version=12)
+    # quantized_model  = quantize_dynamic('base_model.onnx', 'base_model_quantized.onnx', weight_type=QuantType.QUInt8)
+
+
+
+    ONNX_MODEL_DIR_M1 = "onnx_models_m1"
+    ONNX_MODEL_DIR_M2 = "onnx_models"
+
     fractions_to_prune = [0.05, 0.25, 0.5, 0.75, 0.9]
     epochs_to_train = [0, 3, 5]
 
-    ############ Quantize model using PyTorch ####################
-    # then retrain [0,3,5,7,10] epochs
-    # convert to ONNX and quantize
-    model = MobileNetv1().to(device)
-    state_dict = torch.load('mbnv1_pt.pt', map_location=device)
-    model.load_state_dict(state_dict)
-    model.to(device)
+    # RECREATE_ALL = False
 
-    summary(model, input_size=(batch_size, 3, 32, 32))
-    print(model)
+    for frac in fractions_to_prune:
+        print(f"Creating model with Pruning Fraction: {frac}")
+        for epochs in epochs_to_train:
+            print(f"Epoch: {epochs}")
 
-    model.eval()
-    backend = 'fbgemm'
-    model.qconfig = torch.quantization.get_default_qconfig(backend)
-    # torch.backends.quantized.engine = backend
-    # model_static_quantized = torch.quantization.prepare(model, inplace=False)
-    # model_static_quantized = torch.quantization.convert(model_static_quantized, inplace=False)
+            # if Path(f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx').exists() and not RECREATE_ALL:
+            #     print(f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx => Already Exists, skipping...')
+            #     continue
 
-    
+            model = torch.load(f'{PT_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.pt', map_location=device)
+            # state_dict = torch.load('mbnv1_pt.pt', map_location=device)
+            # model.load_state_dict(state_dict)
+            model.to(device)
 
-    # Quantize
+            # channel_fraction_pruning(model, frac)
+            # summary(model, input_size=(batch_size, 3, 32, 32), verbose=0)
+            # cleaned_model = remove_channel(model)
 
+            # # Retrain for epochs epochs
+            # if epochs > 0:
+            #     cleaned_model.to(device)
+            #     train_info = train(model=cleaned_model, num_epochs=epochs, device=device, batch_size=128, random_seed=1, compute_test_acc=False)
+            #     print(f"M1: Training Info: {train_info}")
 
-    # Fuse the activations to preceding layers, where applicable.
-    # This needs to be done manually depending on the model architecture.
-    # Common fusions include `conv + relu` and `conv + batchnorm + relu`
-    model_fp32_fused = torch.quantization.fuse_modules(model, [['conv1', 'batchnorm', 'relu']])
+            # Export to ONNX
+            # torch.save(cleaned_model, f'{PT_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.pt')
+            # cleaned_model.cpu() # Send cleaned model to CPU for ONNX export
+            #  torch.onnx.export(cleaned_model, torch.randn(1, 3, 32, 32), f'{ONNX_MODEL_DIR_M1}/model_epochs_{epochs}_frac_{frac}.onnx', export_params=True, opset_version=12)
+            #test(frac, e)
 
-    # Prepare the model for static quantization. This inserts observers in
-    # the model that will observe activation tensors during calibration.
-    model_fp32_prepared = torch.quantization.prepare(model_fp32_fused)
-
-    # calibrate the prepared model to determine quantization parameters for activations
-    # in a real world setting, the calibration would be done with a representative dataset
-    input_fp32 = torch.randn(batch_size, 3, 32, 32)
-    model_fp32_prepared(input_fp32)
-
-    # Convert the observed model to a quantized model. This does several things:
-    # quantizes the weights, computes and stores the scale and bias value to be
-    # used with each activation tensor, and replaces key operators with quantized
-    # implementations.
-    model_int8 = torch.quantization.convert(model_fp32_prepared)
-    summary(model_int8, input_size=(batch_size, 3, 32, 32))
-    # run the model, relevant ca
-    
-
-    # Retrain
+            model.cpu() # Send cleaned model to CPU for ONNX export
+            torch.onnx.export(model, torch.randn(1, 3, 32, 32), f'{ONNX_MODEL_DIR_M1}/model_epochs_{epochs}_frac_{frac}.onnx', export_params=True, opset_version=12)
+            #test(frac, e)
 
 
-    RECREATE_ALL = False
-
-    # for frac in fractions_to_prune:
-    #     print(f"Creating model with Pruning Fraction: {frac}")
-    #     for epochs in epochs_to_train:
-    #         print(f"Epoch: {epochs}")
-
-    #         if Path(f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx').exists() and not RECREATE_ALL:
-    #             print(f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx => Already Exists, skipping...')
-    #             continue
-
-    #         model = MobileNetv1().to(device)
-    #         state_dict = torch.load('mbnv1_pt.pt', map_location=device)
-    #         model.load_state_dict(state_dict)
-    #         model.to(device)
-
-    #         channel_fraction_pruning(model, frac)
-    #         summary(model, input_size=(batch_size, 3, 32, 32), verbose=0)
-    #         cleaned_model = remove_channel(model)
-
-    #         # Retrain for epochs epochs
-    #         if epochs > 0:
-    #             cleaned_model.to(device)
-    #             train_info = train(model=cleaned_model, num_epochs=epochs, device=device, batch_size=128, random_seed=1, compute_test_acc=False)
-    #             print(f"M1: Training Info: {train_info}")
-
-    #         # Export to ONNX
-    #         torch.save(cleaned_model, f'{PT_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.pt')
-    #         cleaned_model.cpu() # Send cleaned model to CPU for ONNX export
-    #         torch.onnx.export(cleaned_model, torch.randn(1, 3, 32, 32), f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx', export_params=True, opset_version=10)
-    #         #test(frac, e)
+    for onnx_model_name in glob.glob(f"{ONNX_MODEL_DIR_M1}/*.onnx"): # Iterate over all .onnx files
+        cleaned_file_name = onnx_model_name.replace('.onnx', '').replace(f"{ONNX_MODEL_DIR_M1}", '').replace("\\","")
+        quantized_model  = quantize_dynamic(onnx_model_name, f'{ONNX_MODEL_DIR_M2}/{cleaned_file_name}_quantized.onnx', weight_type=QuantType.QUInt8)
