@@ -1,0 +1,2 @@
+model_name,test_acc,runtime,avg_latency,num_images
+onnx_models/model_epochs_5_frac_0.9.onnx,0.3727,49.19043779373169,0.004919043779373169,10000
