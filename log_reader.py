@@ -56,3 +56,4 @@ table1 = table1.rename(columns={'params': 'Parameters',
 rounded_table1 = table1.round(decimals=3)
 table1.to_csv('table1_m2.csv')
 rounded_table1.to_csv('rounded_table1_m2.csv')
+table1.to_html('table1_m2.html')
