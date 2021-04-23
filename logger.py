@@ -20,10 +20,12 @@ class Logger:
         Path(self.LOG_DIR).mkdir(exist_ok=True, parents=True)
         self.logger_thread = None
         self.is_running = False
+        self.baseline_mem = None
 
 
     def wait_for_startup(self):
         self.SP2_tel = tel.Telnet("192.168.4.1")
+        self.baseline_mem = psutil.virtual_memory()[3]
 
     def start_logger_thread(self, run_name):
         print(f"LOGGER: Starting logger thread for {run_name}")
@@ -58,7 +60,7 @@ class Logger:
         while self.is_running:
             cur_start_time = time.time()
 
-            max_mem = max(max_mem, psutil.virtual_memory()[3])
+            max_mem = max(max_mem, psutil.virtual_memory()[3] - self.baseline_mem)
             total_power = self.getBoardPower(total_power)
             cum_energy += total_power * (cur_start_time - prev_start_time)  # J = W * s
 
