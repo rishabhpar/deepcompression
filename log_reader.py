@@ -5,7 +5,7 @@ from onnx_opcounter import calculate_macs, calculate_params
 import onnx
 
 LOG_DIR = 'logs_run2'
-ONNX_MODELS_DIR = 'onnx_models'
+ONNX_MODELS_DIR = 'onnx_models_m2'
 assert Path(LOG_DIR).exists()
 assert Path(ONNX_MODELS_DIR).exists()
 

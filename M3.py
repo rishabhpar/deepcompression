@@ -1,3 +1,4 @@
+import pandas as pd
 import torch
 from torchinfo import summary
 from mobilenet_rm_filt_pt import MobileNetv1, remove_channel
@@ -13,12 +14,13 @@ import time
 def channel_fraction_pruning(model, fraction):
     model.conv1 = prune.ln_structured(model.conv1, name="weight", amount=fraction, n=1, dim=0)
 
-    for i in range (0,13):
+    for i in range(0, 13):
         model.layers[i].conv2 = prune.ln_structured(model.layers[i].conv2, name="weight", amount=fraction, n=1, dim=0)
+
 
 def test(frac, e):
     os.system(f'python tester.py --fraction {frac} --epoch {e}')
-    
+
 
 def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test_acc=False):
     torch.manual_seed(random_seed)
@@ -116,8 +118,6 @@ def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test
                     _, predicted = torch.max(outputs.data, 1)
                     test_total += labels.size(0)
                     test_correct += predicted.eq(labels).sum().item()
-            print(
-                'Test loss: %.4f Test accuracy: %.2f %%' % (test_loss / (batch_idx + 1), 100. * test_correct / test_total))
             test_loss_hist.append(test_loss / len(test_loader))
             test_acc_hist.append(100. * test_correct / test_total)
             print(f'Test Accuracy %: {test_acc_hist[-1]}')
@@ -133,48 +133,64 @@ def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test
 
 
 if __name__ == '__main__':
-
-    ONNX_SAVE_DIR = "onnx_models_m2"
-    PT_SAVE_DIR = "pt_models"
-    Path(ONNX_SAVE_DIR).mkdir(exist_ok=True, parents=True)
-    Path(PT_SAVE_DIR).mkdir(exist_ok=True, parents=True)
-
-    # ########## Load Trained Model ##########
+    # ########### Load Trained Model ############
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
-    batch_size = 1
+    model = MobileNetv1().to(device)
+    state_dict = torch.load('mbnv1_pt.pt', map_location=device)
+    model.load_state_dict(state_dict)
+    model.to(device)
 
-    fractions_to_prune = [0.05, 0.25, 0.5, 0.75, 0.9]
-    epochs_to_train = [0, 3, 5]
 
-    RECREATE_ALL = False
+    ##################################
+    #  Iterative Structural Pruning  #
+    ##################################
+    RUN_ITER_STRUCT_PRUN = True
 
-    for frac in fractions_to_prune:
-        print(f"Creating model with Pruning Fraction: {frac}")
-        for epochs in epochs_to_train:
-            print(f"Epoch: {epochs}")
+    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned"
+    if RUN_ITER_STRUCT_PRUN:
+        Path(STRUCT_PRUN_SAVE_DIR).mkdir(exist_ok=True, parents=True)
 
-            if Path(f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx').exists() and not RECREATE_ALL:
-                print(f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx => Already Exists, skipping...')
-                continue
+        max_prune_fraction = 0.95
+        prune_each_step = 0.05
+        epochs_after_each_prune = 10
+        currently_pruned_frac = 0.0
 
-            model = MobileNetv1().to(device)
-            state_dict = torch.load('mbnv1_pt.pt', map_location=device)
-            model.load_state_dict(state_dict)
-            model.to(device)
+        prune_frac_hist = []
+        test_acc_hist = []
+        train_acc_hist = []
 
-            channel_fraction_pruning(model, frac)
-            summary(model, input_size=(batch_size, 3, 32, 32), verbose=0)
-            cleaned_model = remove_channel(model)
+        while currently_pruned_frac < max_prune_fraction:
 
-            # Retrain for epochs epochs
-            if epochs > 0:
-                cleaned_model.to(device)
-                train_info = train(model=cleaned_model, num_epochs=epochs, device=device, batch_size=128, random_seed=1, compute_test_acc=False)
-                print(f"M1: Training Info: {train_info}")
+            # Calculate Pruning Amount
+            prune_frac = 1 - (currently_pruned_frac - prune_each_step) / currently_pruned_frac
 
-            # Export to ONNX
-            torch.save(cleaned_model, f'{PT_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.pt')
-            cleaned_model.cpu() # Send cleaned model to CPU for ONNX export
-            torch.onnx.export(cleaned_model, torch.randn(1, 3, 32, 32), f'{ONNX_SAVE_DIR}/model_epochs_{epochs}_frac_{frac}.onnx', export_params=True, opset_version=10)
-            #test(frac, e)
+            # Prune model
+            channel_fraction_pruning(model, prune_frac)
+            summary(model, input_size=(1, 3, 32, 32), verbose=0)
+            model = remove_channel(model)
+            currently_pruned_frac += prune_each_step
+
+            # Retrain model after pruning
+            if epochs_after_each_prune > 0:
+                model.to(device)
+                train_info = train(model=model, num_epochs=epochs_after_each_prune, device=device, batch_size=128,
+                                   random_seed=1, compute_test_acc=True)
+                train_acc, test_acc = train_info['train_acc_hist'][-1], train_info['test_acc_hist'][-1]
+                test_acc_hist.append(test_acc)
+                train_acc_hist.append(train_acc)
+            prune_frac_hist.append(currently_pruned_frac)
+
+            # Save model after each prune + retrain iteration
+            torch.save(model, f'{STRUCT_PRUN_SAVE_DIR}/model_frac_{currently_pruned_frac}.onnx')
+        prune_info_df = pd.DataFrame(columns=('Prune Fraction', 'Test Accuracy', 'Train Accuracy'), data=(prune_frac_hist, test_acc_hist, train_acc_hist))
+        prune_info_df.to_csv(f'{STRUCT_PRUN_SAVE_DIR}/prune_info_log.csv')
+
+        ##################################
+        #          Quantization          #
+        ##################################
+        RUN_QAT_QUANTIZATION = True
+
+        STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned"
+
+        Path(STRUCT_PRUN_SAVE_DIR).mkdir(exist_ok=True, parents=True)

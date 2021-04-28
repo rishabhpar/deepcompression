@@ -13,7 +13,7 @@ import numpy as np
 
 class Logger:
 
-    def __init__(self, LOG_DIR='logs'):
+    def __init__(self, LOG_DIR='logs_m2'):
         super(Logger, self).__init__()
         self.SP2_tel = None
         self.LOG_DIR = LOG_DIR
