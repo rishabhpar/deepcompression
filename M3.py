@@ -53,6 +53,7 @@ def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test
 
     training_time = 0
 
+    prev_test_acc = 0
     for epoch in range(num_epochs):
         # Training phase loop
         start_time = time.time()
@@ -121,12 +122,13 @@ def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test
             test_loss_hist.append(test_loss / len(test_loader))
             test_acc_hist.append(100. * test_correct / test_total)
             print(f'Test Accuracy %: {test_acc_hist[-1]}')
+            if prev_test_acc >= test_acc_hist[-1]:
+                print("Model is overfitting!, stopping training")
+                break
 
         print(f'Train Accuracy %: {train_acc_hist[-1]}')
         print(f'Training Time: {training_time}(s)')
 
-    print(str(train_acc_hist))
-    print(str(test_acc_hist))
     retData['train_acc_hist'] = train_acc_hist
     retData['test_acc_hist'] = test_acc_hist
     return retData
@@ -153,7 +155,7 @@ if __name__ == '__main__':
 
         max_prune_fraction = 0.95
         prune_each_step = 0.05
-        epochs_after_each_prune = 10
+        epochs_after_each_prune = 100
         currently_pruned_frac = 0.0
 
         prune_frac_hist = []
@@ -163,13 +165,14 @@ if __name__ == '__main__':
         while currently_pruned_frac < max_prune_fraction:
 
             # Calculate Pruning Amount
-            prune_frac = 1 - (currently_pruned_frac - prune_each_step) / currently_pruned_frac
+            prune_frac = 1 - ((1-currently_pruned_frac) - prune_each_step) / (1-currently_pruned_frac)
 
             # Prune model
             channel_fraction_pruning(model, prune_frac)
             summary(model, input_size=(1, 3, 32, 32), verbose=0)
             model = remove_channel(model)
             currently_pruned_frac += prune_each_step
+            print(f"--- Model Pruned Fraction: {currently_pruned_frac} ---")
 
             # Retrain model after pruning
             if epochs_after_each_prune > 0:
@@ -182,15 +185,6 @@ if __name__ == '__main__':
             prune_frac_hist.append(currently_pruned_frac)
 
             # Save model after each prune + retrain iteration
-            torch.save(model, f'{STRUCT_PRUN_SAVE_DIR}/model_frac_{currently_pruned_frac}.onnx')
+            torch.save(model, f'{STRUCT_PRUN_SAVE_DIR}/model_frac_{currently_pruned_frac:0.2f}.pt')
         prune_info_df = pd.DataFrame(columns=('Prune Fraction', 'Test Accuracy', 'Train Accuracy'), data=(prune_frac_hist, test_acc_hist, train_acc_hist))
         prune_info_df.to_csv(f'{STRUCT_PRUN_SAVE_DIR}/prune_info_log.csv')
-
-        ##################################
-        #          Quantization          #
-        ##################################
-        RUN_QAT_QUANTIZATION = True
-
-        STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned"
-
-        Path(STRUCT_PRUN_SAVE_DIR).mkdir(exist_ok=True, parents=True)
