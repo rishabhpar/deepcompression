@@ -92,6 +92,6 @@ if __name__ == '__main__':
         # quantize_qat(onnx_model_name, f'{ONNX_QUANTIZED_DIR}/{cleaned_file_name}_qat_quantized_uint8.onnx', weight_type=QuantType.QUInt8)
       
         quantize_static(onnx_model_name,
-                    f'{ONNX_QUANTIZED_DIR}/{cleaned_file_name}_static_quantized_uint8.onnx',
+                    f'{ONNX_QUANTIZED_DIR}/{cleaned_file_name}_static_quantized_int8.onnx',
                     MobilenetDataReader(calibration_dataset_path) ,
-                    weight_type=QuantType.QUInt8)
+                    weight_type=QuantType.QInt8)
