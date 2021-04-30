@@ -13,8 +13,8 @@ from logger import Logger
 
 if __name__ == '__main__':
 
-    LOG_DIR = 'logs_m2'
-    ONNX_MODEL_DIR = "onnx_models_m2"
+    LOG_DIR = 'logs_m3'
+    ONNX_MODEL_DIR = "m3/onnx_quantized"
     Path(LOG_DIR).mkdir(exist_ok=True, parents=True)
     assert(Path(ONNX_MODEL_DIR).exists())
 
