@@ -22,12 +22,13 @@ def test(frac, e):
     os.system(f'python tester.py --fraction {frac} --epoch {e}')
 
 
-def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test_acc=False):
+def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test_acc=False, trans=transforms.Compose([])):
     torch.manual_seed(random_seed)
 
     # CIFAR10 Dataset (Images and Labels)
     train_dataset = dsets.CIFAR10(root='data', train=True, transform=transforms.Compose([
-        transforms.ToTensor(),
+        trans,
+        #transforms.ToTensor(),
         transforms.Normalize(mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010)),
     ]), download=True)
 
@@ -133,6 +134,17 @@ def train(model, num_epochs, device, batch_size=128, random_seed=1, compute_test
     retData['test_acc_hist'] = test_acc_hist
     return retData
 
+
+class AddGaussianNoise(object):
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+
+    def __call__(self, tensor):
+        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
 ################# Functions copied from PyTorch tutorial ################################
 class AverageMeter(object):
@@ -267,8 +279,8 @@ if __name__ == '__main__':
         model.load_state_dict(state_dict)
         model.to(device)
     else:
-        model_name = 'model_frac_0.815.pt'
-        model = torch.load(f'm3/structural_pruned_focus_study4/{model_name}', map_location=device)
+        model_name = 'model_frac_0.65.pt'
+        model = torch.load(f'm3/structural_pruned_retrain_100/{model_name}', map_location=device)
         model.to(device)
 
     ##################################
@@ -276,19 +288,24 @@ if __name__ == '__main__':
     ##################################
     RUN_ITER_STRUCT_PRUN = True
 
-    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned_focus_study5"
+    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned_noisy0"
     if RUN_ITER_STRUCT_PRUN:
         Path(STRUCT_PRUN_SAVE_DIR).mkdir(exist_ok=True, parents=True)
 
-        max_prune_fraction = 0.9
-        prune_each_step = 0.005
-        epochs_after_each_prune = 700
-        currently_pruned_frac = 0.8
+        max_prune_fraction = 0.7
+        prune_each_step = 0.01
+        epochs_after_each_prune = 100
+        currently_pruned_frac = 0.65
 
         prune_frac_hist = []
         test_acc_hist = []
         train_acc_hist = []
         num_epochs_trained_hist = []
+
+        train_transformations = transforms.Compose([transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                                                    transforms.RandomAffine(degrees=15, translate=(0.05, 0.05), scale=(0.98, 1.03), shear=5),
+                                                    transforms.ToTensor(),
+                                                    AddGaussianNoise(mean=0.5, std=0.25)])
 
         while currently_pruned_frac < max_prune_fraction:
 
@@ -306,7 +323,7 @@ if __name__ == '__main__':
             if epochs_after_each_prune > 0:
                 model.to(device)
                 train_info = train(model=model, num_epochs=epochs_after_each_prune, device=device, batch_size=128,
-                                   random_seed=1, compute_test_acc=True)
+                                   random_seed=1, compute_test_acc=True, trans=train_transformations)
                 num_epochs_trained = len(train_info['train_acc_hist'])
                 train_acc, test_acc = train_info['train_acc_hist'][-1], train_info['test_acc_hist'][-1]
                 test_acc_hist.append(test_acc)
@@ -361,7 +378,7 @@ if __name__ == '__main__':
 
         # Dataset Loader (Input Pipeline)
         train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=128, shuffle=True)
-        test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=128, shuffle=False)
+
 
         qat_model.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
 
