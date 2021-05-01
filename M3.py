@@ -267,8 +267,8 @@ if __name__ == '__main__':
         model.load_state_dict(state_dict)
         model.to(device)
     else:
-        model_name = 'model_frac_0.800.pt'
-        model = torch.load(f'm3/structural_pruned_focus_study2/{model_name}', map_location=device)
+        model_name = 'model_frac_0.815.pt'
+        model = torch.load(f'm3/structural_pruned_focus_study4/{model_name}', map_location=device)
         model.to(device)
 
     ##################################
@@ -276,18 +276,19 @@ if __name__ == '__main__':
     ##################################
     RUN_ITER_STRUCT_PRUN = True
 
-    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned_focus_study3"
+    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned_focus_study5"
     if RUN_ITER_STRUCT_PRUN:
         Path(STRUCT_PRUN_SAVE_DIR).mkdir(exist_ok=True, parents=True)
 
-        max_prune_fraction = 0.85
-        prune_each_step = 0.01
-        epochs_after_each_prune = 200
+        max_prune_fraction = 0.9
+        prune_each_step = 0.005
+        epochs_after_each_prune = 700
         currently_pruned_frac = 0.8
 
         prune_frac_hist = []
         test_acc_hist = []
         train_acc_hist = []
+        num_epochs_trained_hist = []
 
         while currently_pruned_frac < max_prune_fraction:
 
@@ -306,16 +307,18 @@ if __name__ == '__main__':
                 model.to(device)
                 train_info = train(model=model, num_epochs=epochs_after_each_prune, device=device, batch_size=128,
                                    random_seed=1, compute_test_acc=True)
+                num_epochs_trained = len(train_info['train_acc_hist'])
                 train_acc, test_acc = train_info['train_acc_hist'][-1], train_info['test_acc_hist'][-1]
                 test_acc_hist.append(test_acc)
                 train_acc_hist.append(train_acc)
+                num_epochs_trained_hist.append(num_epochs_trained)
             prune_frac_hist.append(currently_pruned_frac)
 
             # Save model after each prune + retrain iteration
             torch.save(model, f'{STRUCT_PRUN_SAVE_DIR}/model_frac_{currently_pruned_frac:0.3f}.pt')
-        prune_info_df = pd.DataFrame(columns=('Prune Fraction', 'Test Accuracy', 'Train Accuracy'),
-                                     data=list(zip(prune_frac_hist, test_acc_hist, train_acc_hist)))
-        prune_info_df.to_csv(f'{STRUCT_PRUN_SAVE_DIR}/prune_info_log.csv')
+            prune_info_df = pd.DataFrame(columns=('Prune Fraction', 'Test Accuracy', 'Train Accuracy', 'epochs_trained'),
+                                         data=list(zip(prune_frac_hist, test_acc_hist, train_acc_hist, num_epochs_trained_hist)))
+            prune_info_df.to_csv(f'{STRUCT_PRUN_SAVE_DIR}/prune_info_log.csv')
 
     ###################################
     #          Quantization           #
