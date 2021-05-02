@@ -302,10 +302,10 @@ if __name__ == '__main__':
         train_acc_hist = []
         num_epochs_trained_hist = []
 
-        train_transformations = transforms.Compose([transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
-                                                    transforms.RandomAffine(degrees=15, translate=(0.05, 0.05), scale=(0.98, 1.03), shear=5),
+        train_transformations = transforms.Compose([transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05),
+                                                    transforms.RandomAffine(degrees=2, translate=(0.025, 0.025), scale=(0.98, 1.02), shear=1),
                                                     transforms.ToTensor(),
-                                                    AddGaussianNoise(mean=0.5, std=0.25)])
+                                                  ])
 
         while currently_pruned_frac < max_prune_fraction:
 

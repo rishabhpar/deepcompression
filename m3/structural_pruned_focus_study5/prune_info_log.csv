@@ -1,0 +1,4 @@
+,Prune Fraction,Test Accuracy,Train Accuracy,epochs_trained
+0,0.805,71.11,99.752,700
+1,0.81,71.5,99.81,700
+2,0.8150000000000001,71.31,99.8,700
