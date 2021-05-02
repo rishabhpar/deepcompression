@@ -279,8 +279,8 @@ if __name__ == '__main__':
         model.load_state_dict(state_dict)
         model.to(device)
     else:
-        model_name = 'model_frac_0.65.pt'
-        model = torch.load(f'm3/structural_pruned_retrain_100/{model_name}', map_location=device)
+        model_name = 'model_frac_0.700.pt'
+        model = torch.load(f'm3/structural_pruned_noisy0/{model_name}', map_location=device)
         model.to(device)
 
     ##################################
@@ -288,14 +288,14 @@ if __name__ == '__main__':
     ##################################
     RUN_ITER_STRUCT_PRUN = True
 
-    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned_noisy0"
+    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned_noisy1"
     if RUN_ITER_STRUCT_PRUN:
         Path(STRUCT_PRUN_SAVE_DIR).mkdir(exist_ok=True, parents=True)
 
-        max_prune_fraction = 0.7
+        max_prune_fraction = 0.95
         prune_each_step = 0.01
         epochs_after_each_prune = 100
-        currently_pruned_frac = 0.65
+        currently_pruned_frac = 0.70
 
         prune_frac_hist = []
         test_acc_hist = []
