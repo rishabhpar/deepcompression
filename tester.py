@@ -52,17 +52,18 @@ if __name__ == '__main__':
         supl_logger.start_logger_thread(run_name=log_name)
 
         # The test_deployment folder contains all 10.000 images from the testing dataset of CIFAR10 in .png format
-        for filename in tqdm(os.listdir("test_deployment")):
+        for filename in tqdm(os.listdir("test_deployment_preproc")):
             # Take each image, one by one, and make inference
-            with Image.open(os.path.join("test_deployment", filename)).resize((32, 32)) as img:
+            with Image.open(os.path.join("test_deployment_preproc", filename)).resize((32, 32)) as img:
 
-                # For PyTorch models ONLY: normalize image
-                input_image = (np.float32(img) / 255. - mean) / std
-                # For PyTorch models ONLY: Add the Batch axis in the data Tensor (C, H, W)
-                input_image = np.expand_dims(np.float32(input_image), axis=0)
-
-                # For PyTorch models ONLY: change the order from (B, H, W, C) to (B, C, H, W)
-                input_image = input_image.transpose([0, 3, 1, 2])
+                # # For PyTorch models ONLY: normalize image
+                # input_image = (np.float32(img) / 255. - mean) / std
+                # # For PyTorch models ONLY: Add the Batch axis in the data Tensor (C, H, W)
+                # input_image = np.expand_dims(np.float32(input_image), axis=0)
+                #
+                # # For PyTorch models ONLY: change the order from (B, H, W, C) to (B, C, H, W)
+                # input_image = input_image.transpose([0, 3, 1, 2])
+                input_image = np.load(filename)
 
                 # Run inference and get the prediction for the input image
                 time_start = time.time()
