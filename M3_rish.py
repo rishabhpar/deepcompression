@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 import os
 from pathlib import Path
 import time
-from onnxruntime.quantization import quantize_static, CalibrationDataReader, QuantFormat, QuantType, quantize_qat
+from onnxruntime.quantization import quantize_static, CalibrationDataReader, QuantFormat, QuantType, quantize_dynamic, quantize_qat
 import glob
 import sys
 import numpy as np
@@ -73,24 +73,31 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     batch_size = 1
 
-    PT_MODEL_DIR = "m3/structural_pruned_retrain_100"
-    ONNX_MODEL_DIR = "m3/onnx_100e_struct_prune"
-    ONNX_QUANTIZED_DIR = "m3/onnx_quantized"
+    PT_MODEL_DIR = "m3/structural_pruned_noisy2"
+    ONNX_MODEL_DIR = "m3/structural_pruned_noisy2"
+    ONNX_QUANTIZED_DIR = "m3/quantized_structural_noisy0"
     calibration_dataset_path = 'test_deployment'
 
-    # for pt_model_name in glob.glob(f"{PT_MODEL_DIR}/*.pt"): # Iterate over all .pt files
-    #     cleaned_file_name = pt_model_name.replace('.pt', '').replace(f"{PT_MODEL_DIR}", '').replace("\\","")
+    for pt_model_name in glob.glob(f"{PT_MODEL_DIR}/*.pt"): # Iterate over all .pt files
+        cleaned_file_name = pt_model_name.replace('.pt', '').replace(f"{PT_MODEL_DIR}", '').replace("\\","")
 
-    #     model = torch.load(pt_model_name, map_location=device)
-    #     model.to(device)
-    #     model.cpu() # Send cleaned model to CPU for ONNX export
+        model = torch.load(pt_model_name, map_location=device)
+        model.to(device)
+        model.cpu() # Send cleaned model to CPU for ONNX export
 
-    #     torch.onnx.export(model, torch.randn(1, 3, 32, 32), f'{ONNX_MODEL_DIR}/{cleaned_file_name}.onnx', export_params=True, opset_version=12)
+        torch.onnx.export(model, torch.randn(1, 3, 32, 32), f'{ONNX_MODEL_DIR}/{cleaned_file_name}.onnx', export_params=True, opset_version=12)
 
     for onnx_model_name in glob.glob(f"{ONNX_MODEL_DIR}/*.onnx"): # Iterate over all .onnx files
         cleaned_file_name = onnx_model_name.replace('.onnx', '').replace(f"{ONNX_MODEL_DIR}", '').replace("\\","")
-        # quantize_qat(onnx_model_name, f'{ONNX_QUANTIZED_DIR}/{cleaned_file_name}_qat_quantized_uint8.onnx', weight_type=QuantType.QUInt8)
-      
+        # quantize_qat(onnx_model_name,
+        #             f'{ONNX_QUANTIZED_DIR}/{cleaned_file_name}_dynamic_quantized_uint8.onnx')
+        # # quantize_dynamic(onnx_model_name,
+        # #             f'{ONNX_QUANTIZED_DIR}/{cleaned_file_name}_dynamic_quantized_uint8.onnx',
+        # #             weight_type=QuantType.QUInt8)
+        quantize_static(onnx_model_name,
+                    f'{ONNX_QUANTIZED_DIR}/{cleaned_file_name}_static_quantized_uint8.onnx',
+                    MobilenetDataReader(calibration_dataset_path) ,
+                    weight_type=QuantType.QUInt8)
         quantize_static(onnx_model_name,
                     f'{ONNX_QUANTIZED_DIR}/{cleaned_file_name}_static_quantized_int8.onnx',
                     MobilenetDataReader(calibration_dataset_path) ,

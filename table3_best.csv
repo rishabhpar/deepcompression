@@ -1,0 +1,5 @@
+,Parameters,Pruning Fraction,Retraining epochs,Memory [MB],Quantization Type,Latency [s],Max Power [W],Energy/image [J],num_images,Accuracy,FoM
+0,model_frac_0.840_static_quantized_int8_1,0.84,100,2.6796875,static,0.003583711,4.863,0.028090093,10000,0.7564,7513.898891
+1,model_frac_0.840_static_quantized_int8_2,0.84,100,2.9296875,static,0.00359116,4.836,0.028317381,10000,0.7564,7438.128084
+2,model_frac_0.840_static_quantized_int8,0.84,100,2.78125,static,0.003555476,4.836,0.027965243,10000,0.7564,7607.381852
+,,0.84,100,2.796875,#DIV/0!,0.003576782,4.845,0.028124239,10000,0.7564,7519.802943

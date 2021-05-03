@@ -1,0 +1,2 @@
+model_name,test_acc,runtime,avg_latency,num_images
+onnx_models/model_frac_0.690_static_quantized_int8.onnx,0.7803,50.743518590927124,0.005074351859092712,10000
