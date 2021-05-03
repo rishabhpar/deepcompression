@@ -4,7 +4,7 @@ from pathlib import Path
 from onnx_opcounter import calculate_macs, calculate_params
 import onnx
 
-LOG_DIR = 'logs_m3'
+LOG_DIR = 'logs_run2'
 ONNX_MODELS_DIR = 'onnx_models'
 assert Path(LOG_DIR).exists()
 # assert Path(ONNX_MODELS_DIR).exists()
@@ -48,5 +48,5 @@ table1 = table1.rename(columns={'params': 'Parameters',
                                 'energy': 'Energy/image [J]',
                                 'acc': 'Accuracy'})
 rounded_table1 = table1.round(decimals=3)
-table1.to_csv('table3.csv')
-rounded_table1.to_csv('rounded_table3.csv')
+table1.to_csv('table3_best.csv')
+rounded_table1.to_csv('rounded_table3_best.csv')
