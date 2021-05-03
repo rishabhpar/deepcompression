@@ -288,7 +288,7 @@ if __name__ == '__main__':
     ##################################
     RUN_ITER_STRUCT_PRUN = True
 
-    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned_noisy1"
+    STRUCT_PRUN_SAVE_DIR = "m3/structural_pruned_noisy2"
     if RUN_ITER_STRUCT_PRUN:
         Path(STRUCT_PRUN_SAVE_DIR).mkdir(exist_ok=True, parents=True)
 
